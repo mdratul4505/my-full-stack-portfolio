@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admin_users")
+}
+
+model Skill {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   // "Frontend Development" | "Backend Development" | "Database" | "Tools & Version Control"
+  icon        String?  // lucide icon identifier or text code
+  proficiency String?  // Optional proficiency note e.g. "Advanced", "Intermediate"
+  order       Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category, order])
+  @@index([isPublished])
+  @@map("skills")
+}
+
+model Project {
+  id           String   @id @default(cuid())
+  title        String
+  slug         String   @unique
+  description  String   @db.Text
+  imageUrl     String?
+  technologies String[]
+  liveUrl      String?
+  githubUrl    String?
+  isFeatured   Boolean  @default(false)
+  order        Int      @default(0)
+  isPublished  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([order])
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@map("projects")
+}
+
+model Education {
+  id          String   @id @default(cuid())
+  institution String
+  department  String
+  degree      String?  @default("Diploma in Engineering")
+  semester    String?  // e.g. "6th Semester"
+  startYear   String?  // e.g. "2022"
+  endYear     String?  // e.g. "2026"
+  cgpa        String?  // optional
+  description String?  @db.Text
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([order])
+  @@map("education")
+}
+
+model PortfolioSettings {
+  id               String   @id @default("default")
+  name             String   @default("Md. Ratul Hasan")
+  headline         String   @default("Full-Stack Web Developer")
+  shortBio         String   @default("Passionate about building scalable, high-performance, and responsive full-stack web applications.")
+  aboutText        String   @db.Text
+  profileImage     String?
+  resumeUrl        String?
+  email            String   @default("dev.ratul.coder@gmail.com")
+  contactEmail     String?
+  phone            String?  @default("01985435655")
+  githubUrl        String?  @default("https://github.com/mdratul4505")
+  linkedinUrl      String?
+  twitterUrl       String?
+  availableForWork Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+
+  @@map("portfolio_settings")
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  ipAddress String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([isRead])
+  @@map("contact_messages")
+}
