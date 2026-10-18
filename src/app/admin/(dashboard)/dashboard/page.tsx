@@ -38,7 +38,7 @@ export default async function AdminDashboardOverviewPage() {
     prisma.project.findMany({
       where: { isFeatured: true },
       take: 3,
-      orderBy: { order: "asc" },
+      orderBy: { createdAt: "desc" },
     }),
   ]);
 

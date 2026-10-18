@@ -3,6 +3,7 @@
 import React, { useState, useRef } from "react";
 import { updateSettingsAction } from "@/server/actions/settings";
 import { uploadImageAction } from "@/server/actions/upload";
+import { compressImageFile } from "@/lib/client-image";
 import { SettingsInput } from "@/lib/validations";
 import { Save, Upload, Loader2, CheckCircle2, User, FileText, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
@@ -41,28 +42,22 @@ export function AboutManagerClient({ initialSettings }: AboutManagerClientProps)
 
     setUploadingImage(true);
     setStatusMessage(null);
-    const formData = new FormData();
-    formData.append("file", file);
 
     try {
-      // 1. Try server action first
       let uploadedUrl: string | null = null;
-      const actionRes = await uploadImageAction(formData);
-      if (actionRes.success && actionRes.url) {
-        uploadedUrl = actionRes.url;
-      } else {
-        // Fallback to API route
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-        const json = await res.json();
-        if (res.ok && json.url) {
-          uploadedUrl = json.url;
+      try {
+        uploadedUrl = await compressImageFile(file, 1200, 0.85);
+      } catch (cErr) {
+        console.warn("Client compression failed, falling back to server:", cErr);
+        const formData = new FormData();
+        formData.append("file", file);
+        const actionRes = await uploadImageAction(formData);
+        if (actionRes.success && actionRes.url) {
+          uploadedUrl = actionRes.url;
         } else {
           setStatusMessage({
             type: "error",
-            text: actionRes.error || json.error || "Image upload failed. Please try again.",
+            text: actionRes.error || "Image upload failed. Please try again.",
           });
           return;
         }

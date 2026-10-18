@@ -55,14 +55,21 @@ export async function uploadImageAction(formData: FormData): Promise<{ success: 
     const safeExtension = isAllowedExt ? extension : ".png";
     const filename = `${Date.now()}-${safeHash}${safeExtension}`;
 
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadsDir, { recursive: true });
+    try {
+      const uploadsDir = path.join(process.cwd(), "public", "uploads");
+      await mkdir(uploadsDir, { recursive: true });
 
-    const filePath = path.join(uploadsDir, filename);
-    await writeFile(filePath, buffer);
+      const filePath = path.join(uploadsDir, filename);
+      await writeFile(filePath, buffer);
 
-    const publicUrl = `/uploads/${filename}`;
-    return { success: true, url: publicUrl };
+      const publicUrl = `/uploads/${filename}`;
+      return { success: true, url: publicUrl };
+    } catch (fsError) {
+      console.warn("Filesystem write failed (likely serverless read-only). Falling back to Base64 data URL.", fsError);
+      const mime = file.type || "image/png";
+      const base64 = buffer.toString("base64");
+      return { success: true, url: `data:${mime};base64,${base64}` };
+    }
   } catch (error: unknown) {
     console.error("uploadImageAction error:", error);
     if (error instanceof Error) {

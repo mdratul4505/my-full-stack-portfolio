@@ -5,8 +5,8 @@ const prisma = new PrismaClient();
 
 async function main() {
   const args = process.argv.slice(2);
-  let email = process.env.ADMIN_INITIAL_EMAIL || "admin@ratulhasan.dev";
-  let password = process.env.ADMIN_INITIAL_PASSWORD || "AdminPassword2026!";
+  let email = process.env.ADMIN_INITIAL_EMAIL || "dev.ratul.coder@gmail.com";
+  let password = process.env.ADMIN_INITIAL_PASSWORD || "password833133";
   let name = process.env.ADMIN_INITIAL_NAME || "Md. Ratul Hasan";
 
   for (let i = 0; i < args.length; i++) {

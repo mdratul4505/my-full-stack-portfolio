@@ -156,8 +156,8 @@ async function main() {
   }
 
   // 5. Seed or Update Admin User
-  const adminEmail = process.env.ADMIN_INITIAL_EMAIL || "admin@ratulhasan.dev";
-  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || "AdminPassword2026!";
+  const adminEmail = process.env.ADMIN_INITIAL_EMAIL || "dev.ratul.coder@gmail.com";
+  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || "password833133";
   const adminName = process.env.ADMIN_INITIAL_NAME || "Md. Ratul Hasan";
 
   const passwordHash = await bcrypt.hash(adminPassword, 12);

@@ -34,9 +34,12 @@ export const projectSchema = z.object({
     .trim()
     .optional()
     .nullable()
-    .refine((val) => !val || val === "" || /^https?:\/\//i.test(val) || val.startsWith("/"), {
-      message: "Please enter a valid URL or path",
-    }),
+    .refine(
+      (val) => !val || val === "" || /^https?:\/\//i.test(val) || val.startsWith("/") || val.startsWith("data:"),
+      {
+        message: "Please enter a valid URL, path, or image upload",
+      }
+    ),
   technologies: z
     .array(z.string().min(1))
     .min(1, "At least one technology is required")

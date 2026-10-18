@@ -12,6 +12,11 @@ function getSecretKey(): Uint8Array {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Redirect /login to /admin/login
+  if (pathname === "/login" || pathname === "/login/") {
+    return NextResponse.redirect(new URL("/admin/login", request.url));
+  }
+
   // Only run on /admin routes
   if (!pathname.startsWith("/admin")) {
     return NextResponse.next();
@@ -38,6 +43,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // If accessing /admin root
+  if (pathname === "/admin" || pathname === "/admin/") {
+    if (isAuthenticated) {
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+    }
+    return NextResponse.redirect(new URL("/admin/login", request.url));
+  }
+
   // If accessing any other /admin page without authentication
   if (!isAuthenticated) {
     const loginUrl = new URL("/admin/login", request.url);
@@ -49,5 +62,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/login", "/admin", "/admin/:path*"],
 };

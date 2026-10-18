@@ -31,8 +31,10 @@ export default function AdminLoginPage() {
     try {
       const result = await loginAction(data);
       if (result.success) {
-        router.push("/admin/dashboard");
-        router.refresh();
+        const searchParams = new URLSearchParams(window.location.search);
+        const from = searchParams.get("from");
+        const destination = from && from.startsWith("/admin") && from !== "/admin/login" ? from : "/admin/dashboard";
+        window.location.href = destination;
       } else {
         setErrorMessage(result.error || "Invalid email or password.");
       }
@@ -105,7 +107,7 @@ export default function AdminLoginPage() {
               </div>
               <input
                 type="email"
-                placeholder="admin@ratulhasan.dev"
+                placeholder="dev.ratul.coder@gmail.com"
                 {...register("email")}
                 disabled={isSubmitting}
                 className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#111111] border text-white text-sm placeholder-[#555] transition-colors focus:outline-none ${

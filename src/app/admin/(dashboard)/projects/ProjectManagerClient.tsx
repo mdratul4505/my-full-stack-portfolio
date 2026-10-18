@@ -10,6 +10,7 @@ import {
   toggleProjectFeaturedAction,
 } from "@/server/actions/projects";
 import { uploadImageAction } from "@/server/actions/upload";
+import { compressImageFile } from "@/lib/client-image";
 import {
   Plus,
   Pencil,
@@ -22,6 +23,7 @@ import {
   X,
   Loader2,
   FolderKanban,
+  Image as ImageIcon,
 } from "lucide-react";
 import { GithubIcon } from "@/components/ui/BrandIcons";
 
@@ -81,7 +83,7 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
     setFormLiveUrl("");
     setFormGithubUrl("");
     setFormFeatured(false);
-    setFormOrder(projects.length + 1);
+    setFormOrder(0);
     setFormPublished(true);
     setStatusMessage(null);
     setIsModalOpen(true);
@@ -120,33 +122,29 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
     if (!file) return;
 
     setUploadingImage(true);
-    const formData = new FormData();
-    formData.append("file", file);
+    setStatusMessage(null);
 
     try {
-      let uploadedUrl: string | null = null;
-      const actionRes = await uploadImageAction(formData);
-      if (actionRes.success && actionRes.url) {
-        uploadedUrl = actionRes.url;
-      } else {
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-        const json = await res.json();
-        if (res.ok && json.url) {
-          uploadedUrl = json.url;
+      // 1. Instant client-side compression to lightweight WebP data URL
+      const compressedDataUrl = await compressImageFile(file, 1400, 0.85);
+      setFormImageUrl(compressedDataUrl);
+      setStatusMessage({ type: "success", text: "Image selected and optimized successfully!" });
+    } catch (clientErr) {
+      console.warn("Client image compression error, trying server action:", clientErr);
+      // Fallback: server upload
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const actionRes = await uploadImageAction(formData);
+        if (actionRes.success && actionRes.url) {
+          setFormImageUrl(actionRes.url);
+          setStatusMessage({ type: "success", text: "Image uploaded successfully!" });
         } else {
-          alert(actionRes.error || json.error || "Failed to upload file");
-          return;
+          alert(actionRes.error || "Failed to upload file. Please choose a valid image.");
         }
+      } catch {
+        alert("Error occurred uploading image.");
       }
-
-      if (uploadedUrl) {
-        setFormImageUrl(uploadedUrl);
-      }
-    } catch {
-      alert("Error occurred uploading image");
     } finally {
       setUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -202,7 +200,7 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
         });
 
         if (res.success && res.data) {
-          setProjects((prev) => [...prev, res.data as ProjectData]);
+          setProjects((prev) => [res.data as ProjectData, ...prev]);
           setIsModalOpen(false);
           setStatusMessage({ type: "success", text: "New project created successfully!" });
         } else {
@@ -307,6 +305,7 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
                     fill
                     sizes="400px"
                     className="object-cover"
+                    unoptimized={project.imageUrl.startsWith("data:")}
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
@@ -511,18 +510,27 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
                 </div>
               </div>
 
+              {/* Big Description Field */}
               <div>
-                <label className="block text-xs font-mono font-semibold text-[#A3A3A3] mb-1 uppercase">
-                  Description *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-mono font-semibold text-[#A3A3A3] uppercase">
+                    Detailed Project Description *
+                  </label>
+                  <span className="text-[11px] font-mono text-[#737373]">
+                    {formDescription.length} characters
+                  </span>
+                </div>
                 <textarea
-                  rows={3}
+                  rows={8}
                   required
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Describe key features, challenges solved, and platform capabilities..."
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#111111] border border-[#303030] text-white text-xs focus:border-[#84CC16] focus:outline-none resize-none"
+                  placeholder="Write a comprehensive description of your project:&#10;• What is the purpose of this project?&#10;• Core features, user workflows, and capabilities&#10;• Technical architecture & challenges solved&#10;• Future roadmap or impact..."
+                  className="w-full px-4 py-3 rounded-xl bg-[#111111] border border-[#303030] text-white text-xs sm:text-sm focus:border-[#84CC16] focus:outline-none resize-y min-h-[170px] leading-relaxed"
                 />
+                <p className="text-[11px] text-[#737373] mt-1 font-mono">
+                  Line breaks and formatted paragraphs will be displayed in full inside the visitor &quot;View Details&quot; modal.
+                </p>
               </div>
 
               {/* Technologies */}
@@ -535,7 +543,7 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
                   required
                   value={formTechnologies}
                   onChange={(e) => setFormTechnologies(e.target.value)}
-                  placeholder="e.g. React, Node.js, Express, MongoDB, Tailwind CSS"
+                  placeholder="e.g. React, Next.js, Node.js, Express, MongoDB, Tailwind CSS"
                   className="w-full px-3.5 py-2 rounded-xl bg-[#111111] border border-[#303030] text-white text-xs focus:border-[#84CC16] focus:outline-none"
                 />
               </div>
@@ -569,40 +577,97 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
                 </div>
               </div>
 
-              {/* Thumbnail Image URL & File Upload */}
+              {/* Thumbnail Image: File Upload & Live Preview */}
               <div>
-                <label className="block text-xs font-mono font-semibold text-[#A3A3A3] mb-1 uppercase">
-                  Thumbnail Image URL or Upload
+                <label className="block text-xs font-mono font-semibold text-[#A3A3A3] mb-1.5 uppercase">
+                  Project Image / Card Thumbnail
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={formImageUrl}
-                    onChange={(e) => setFormImageUrl(e.target.value)}
-                    placeholder="/uploads/sample.png or https://..."
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-[#111111] border border-[#303030] text-white text-xs focus:border-[#84CC16] focus:outline-none"
-                  />
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept="image/*"
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingImage}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#252525] border border-[#303030] text-xs font-semibold text-white hover:border-[#84CC16] transition-colors shrink-0"
-                  >
-                    {uploadingImage ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Upload className="w-3.5 h-3.5 text-[#84CC16]" />
-                    )}
-                    <span>Upload</span>
-                  </button>
-                </div>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                {formImageUrl ? (
+                  <div className="p-3 rounded-xl bg-[#111111] border border-[#303030] space-y-3">
+                    <div className="relative w-full h-40 bg-[#161616] rounded-lg overflow-hidden border border-[#252525]">
+                      <Image
+                        src={formImageUrl}
+                        alt="Project Preview"
+                        fill
+                        className="object-cover"
+                        unoptimized={formImageUrl.startsWith("data:")}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-[#84CC16] font-mono flex items-center gap-1.5 truncate">
+                        <ImageIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Image selected</span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingImage}
+                          className="px-3 py-1.5 rounded-lg bg-[#202020] border border-[#303030] text-white text-xs hover:border-[#84CC16] hover:text-[#84CC16] transition-colors flex items-center gap-1.5"
+                        >
+                          {uploadingImage ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Upload className="w-3.5 h-3.5 text-[#84CC16]" />
+                          )}
+                          <span>Change File</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormImageUrl("")}
+                          className="px-3 py-1.5 rounded-lg bg-red-950/40 border border-red-900/60 text-red-300 text-xs hover:bg-red-900/50 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="cursor-pointer border-2 border-dashed border-[#303030] hover:border-[#84CC16] bg-[#111111] hover:bg-[#141414] rounded-xl p-4 sm:p-5 flex flex-col items-center justify-center text-center transition-all group"
+                    >
+                      {uploadingImage ? (
+                        <div className="flex items-center gap-2 text-xs text-[#84CC16]">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>Processing & optimizing image...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-10 h-10 rounded-xl bg-[#1A1A1A] border border-[#303030] group-hover:border-[#84CC16] flex items-center justify-center text-[#84CC16] mb-2 transition-colors">
+                            <Upload className="w-5 h-5" />
+                          </div>
+                          <span className="text-xs font-semibold text-white group-hover:text-[#84CC16] transition-colors">
+                            Click to upload image file from device
+                          </span>
+                          <span className="text-[11px] text-[#737373] mt-0.5 font-mono">
+                            Supports PNG, JPG, WebP, GIF, SVG (auto-optimized)
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={formImageUrl}
+                        onChange={(e) => setFormImageUrl(e.target.value)}
+                        placeholder="Or paste external image URL (https://...)"
+                        className="w-full px-3.5 py-2 rounded-xl bg-[#111111] border border-[#303030] text-white text-xs focus:border-[#84CC16] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3 pt-1">

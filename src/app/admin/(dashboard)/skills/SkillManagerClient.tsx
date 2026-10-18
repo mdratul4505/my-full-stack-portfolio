@@ -86,7 +86,7 @@ export function SkillManagerClient({ initialSkills }: SkillManagerClientProps) {
     setFormCategory(SKILL_CATEGORIES[0]);
     setFormIcon("Code2");
     setFormProficiency("");
-    setFormOrder(skills.length + 1);
+    setFormOrder(0);
     setFormPublished(true);
     setStatusMessage(null);
     setIsModalOpen(true);
@@ -142,7 +142,7 @@ export function SkillManagerClient({ initialSkills }: SkillManagerClientProps) {
         });
 
         if (res.success && res.data) {
-          setSkills((prev) => [...prev, res.data as SkillData]);
+          setSkills((prev) => [res.data as SkillData, ...prev]);
           setIsModalOpen(false);
           setStatusMessage({ type: "success", text: "New skill created successfully!" });
         } else {

@@ -58,14 +58,21 @@ export async function POST(req: NextRequest) {
     const safeHash = crypto.randomBytes(16).toString("hex");
     const filename = `${Date.now()}-${safeHash}${extension}`;
 
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadsDir, { recursive: true });
+    try {
+      const uploadsDir = path.join(process.cwd(), "public", "uploads");
+      await mkdir(uploadsDir, { recursive: true });
 
-    const filePath = path.join(uploadsDir, filename);
-    await writeFile(filePath, buffer);
+      const filePath = path.join(uploadsDir, filename);
+      await writeFile(filePath, buffer);
 
-    const publicUrl = `/uploads/${filename}`;
-    return NextResponse.json({ success: true, url: publicUrl });
+      const publicUrl = `/uploads/${filename}`;
+      return NextResponse.json({ success: true, url: publicUrl });
+    } catch (fsError) {
+      console.warn("Filesystem write failed in /api/upload (serverless). Falling back to Base64 data URL.", fsError);
+      const mime = file.type || "image/png";
+      const base64 = buffer.toString("base64");
+      return NextResponse.json({ success: true, url: `data:${mime};base64,${base64}` });
+    }
   } catch (error: unknown) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Internal server error during upload" }, { status: 500 });
