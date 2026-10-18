@@ -13,6 +13,7 @@ import {
   FileDown,
   Globe,
   Briefcase,
+  X,
 } from "lucide-react";
 import { GithubIcon, LinkedinIcon, TwitterIcon } from "@/components/ui/BrandIcons";
 
@@ -27,6 +28,16 @@ export function SettingsManagerClient({ initialSettings }: SettingsManagerClient
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  // Auto-hide status message after 3.5s
+  React.useEffect(() => {
+    if (statusMessage) {
+      const timer = setTimeout(() => {
+        setStatusMessage(null);
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [statusMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,14 +83,24 @@ export function SettingsManagerClient({ initialSettings }: SettingsManagerClient
       {/* Global Status Message */}
       {statusMessage && (
         <div
-          className={`p-3.5 rounded-xl text-xs flex items-center gap-2.5 border ${
+          className={`p-3.5 rounded-xl text-xs flex items-center justify-between gap-2.5 border ${
             statusMessage.type === "success"
               ? "bg-[#84CC16]/10 border-[#84CC16]/40 text-[#84CC16]"
               : "bg-red-950/40 border-red-800 text-red-300"
           }`}
         >
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{statusMessage.text}</span>
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{statusMessage.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStatusMessage(null)}
+            className="p-1 hover:opacity-75 transition-opacity"
+            title="Dismiss notification"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 

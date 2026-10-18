@@ -29,10 +29,12 @@ const CATEGORY_TABS = [
 export function SkillsSection({ skills }: SkillsSectionProps) {
   const [selectedCategory, setSelectedCategory] = useState("ALL");
 
+  const sortedSkills = [...skills].sort((a, b) => a.order - b.order);
+
   const filteredSkills =
     selectedCategory === "ALL"
-      ? skills
-      : skills.filter((s) => s.category === selectedCategory);
+      ? sortedSkills
+      : sortedSkills.filter((s) => s.category === selectedCategory);
 
   return (
     <section id="skills" className="py-24 relative border-t border-[#303030]/60">

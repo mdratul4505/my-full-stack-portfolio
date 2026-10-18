@@ -45,8 +45,17 @@ interface ProjectManagerClientProps {
   initialProjects: ProjectData[];
 }
 
+const sortProjectsByOrder = (items: ProjectData[]) => {
+  return [...items].sort((a, b) => {
+    if (a.order !== b.order) {
+      return a.order - b.order;
+    }
+    return 0;
+  });
+};
+
 export function ProjectManagerClient({ initialProjects }: ProjectManagerClientProps) {
-  const [projects, setProjects] = useState<ProjectData[]>(initialProjects);
+  const [projects, setProjects] = useState<ProjectData[]>(() => sortProjectsByOrder(initialProjects));
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,6 +68,16 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Auto-hide status message after 3.5s
+  React.useEffect(() => {
+    if (statusMessage) {
+      const timer = setTimeout(() => {
+        setStatusMessage(null);
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [statusMessage]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form Fields
@@ -70,7 +89,7 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
   const [formLiveUrl, setFormLiveUrl] = useState("");
   const [formGithubUrl, setFormGithubUrl] = useState("");
   const [formFeatured, setFormFeatured] = useState(false);
-  const [formOrder, setFormOrder] = useState(0);
+  const [formOrder, setFormOrder] = useState(1);
   const [formPublished, setFormPublished] = useState(true);
 
   const openAddModal = () => {
@@ -83,7 +102,8 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
     setFormLiveUrl("");
     setFormGithubUrl("");
     setFormFeatured(false);
-    setFormOrder(0);
+    const maxOrder = projects.length > 0 ? Math.max(...projects.map((p) => p.order || 0)) : 0;
+    setFormOrder(maxOrder + 1);
     setFormPublished(true);
     setStatusMessage(null);
     setIsModalOpen(true);
@@ -178,9 +198,12 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
 
         if (res.success && res.data) {
           setProjects((prev) =>
-            prev.map((p) => (p.id === editingProject.id ? (res.data as ProjectData) : p))
+            sortProjectsByOrder(
+              prev.map((p) => (p.id === editingProject.id ? (res.data as ProjectData) : p))
+            )
           );
           setIsModalOpen(false);
+          setEditingProject(null);
           setStatusMessage({ type: "success", text: "Project updated successfully!" });
         } else {
           setStatusMessage({ type: "error", text: res.error || "Failed to update project." });
@@ -200,8 +223,9 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
         });
 
         if (res.success && res.data) {
-          setProjects((prev) => [res.data as ProjectData, ...prev]);
+          setProjects((prev) => sortProjectsByOrder([...prev, res.data as ProjectData]));
           setIsModalOpen(false);
+          setEditingProject(null);
           setStatusMessage({ type: "success", text: "New project created successfully!" });
         } else {
           setStatusMessage({ type: "error", text: res.error || "Failed to create project." });
@@ -336,8 +360,11 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
                   <h3 className="text-base font-bold text-white group-hover:text-[#84CC16] transition-colors">
                     {project.title}
                   </h3>
-                  <span className="text-[10px] font-mono text-[#737373] shrink-0">
-                    Order: {project.order}
+                  <span
+                    className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md bg-[#111111] border border-[#303030] text-[#84CC16] shrink-0"
+                    title={`Display Order: ${project.order}`}
+                  >
+                    Order: #{project.order}
                   </span>
                 </div>
 
@@ -478,6 +505,12 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {statusMessage && statusMessage.type === "error" && (
+              <div className="p-3 mb-3 rounded-xl text-xs bg-red-950/40 border border-red-800 text-red-300">
+                {statusMessage.text}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -673,14 +706,18 @@ export function ProjectManagerClient({ initialProjects }: ProjectManagerClientPr
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="block text-xs font-mono font-semibold text-[#A3A3A3] mb-1 uppercase">
-                    Display Order
+                    Display Order (1 = 1st, 2 = 2nd...)
                   </label>
                   <input
                     type="number"
+                    min={1}
                     value={formOrder}
                     onChange={(e) => setFormOrder(Number(e.target.value))}
                     className="w-full px-3.5 py-2 rounded-xl bg-[#111111] border border-[#303030] text-white text-xs focus:border-[#84CC16] focus:outline-none"
                   />
+                  <p className="text-[10px] text-[#737373] mt-1 font-mono">
+                    Lower number comes first (1 = 1st, 2 = 2nd, etc.)
+                  </p>
                 </div>
 
                 <div className="flex flex-col justify-end space-y-2 pb-1">

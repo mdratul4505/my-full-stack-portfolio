@@ -64,11 +64,17 @@ export default async function PortfolioHomePage() {
     }),
     prisma.skill.findMany({
       where: { isPublished: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: [
+        { order: "asc" },
+        { createdAt: "desc" },
+      ],
     }),
     prisma.project.findMany({
       where: { isPublished: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: [
+        { order: "asc" },
+        { createdAt: "desc" },
+      ],
     }),
     prisma.education.findMany({
       orderBy: { order: "asc" },

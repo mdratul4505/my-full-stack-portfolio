@@ -7,7 +7,10 @@ export const revalidate = 0;
 
 export default async function AdminProjectsPage() {
   const projects = await prisma.project.findMany({
-    orderBy: { createdAt: "desc" },
+    orderBy: [
+      { order: "asc" },
+      { createdAt: "desc" },
+    ],
   });
 
   return <ProjectManagerClient initialProjects={projects} />;

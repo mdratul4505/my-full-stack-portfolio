@@ -43,6 +43,16 @@ export function EducationManagerClient({ initialEducation }: EducationManagerCli
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Auto-hide status message after 3.5s
+  React.useEffect(() => {
+    if (statusMessage) {
+      const timer = setTimeout(() => {
+        setStatusMessage(null);
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [statusMessage]);
+
   // Form Fields
   const [formInstitution, setFormInstitution] = useState("");
   const [formDepartment, setFormDepartment] = useState("");
@@ -108,6 +118,7 @@ export function EducationManagerClient({ initialEducation }: EducationManagerCli
             prev.map((e) => (e.id === editingItem.id ? (res.data as EducationData) : e))
           );
           setIsModalOpen(false);
+          setEditingItem(null);
           setStatusMessage({ type: "success", text: "Education record updated successfully!" });
         } else {
           setStatusMessage({ type: "error", text: res.error || "Failed to update record." });
@@ -128,6 +139,7 @@ export function EducationManagerClient({ initialEducation }: EducationManagerCli
         if (res.success && res.data) {
           setEducationList((prev) => [...prev, res.data as EducationData]);
           setIsModalOpen(false);
+          setEditingItem(null);
           setStatusMessage({ type: "success", text: "New education record added successfully!" });
         } else {
           setStatusMessage({ type: "error", text: res.error || "Failed to create record." });
@@ -305,6 +317,12 @@ export function EducationManagerClient({ initialEducation }: EducationManagerCli
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {statusMessage && statusMessage.type === "error" && (
+              <div className="p-3 mb-3 rounded-xl text-xs bg-red-950/40 border border-red-800 text-red-300">
+                {statusMessage.text}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>

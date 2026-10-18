@@ -47,10 +47,12 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
     };
   }, [selectedProject]);
 
+  const sortedProjects = [...projects].sort((a, b) => a.order - b.order);
+
   const displayedProjects =
     filter === "featured"
-      ? projects.filter((p) => p.isFeatured)
-      : projects;
+      ? sortedProjects.filter((p) => p.isFeatured)
+      : sortedProjects;
 
   return (
     <section id="projects" className="py-24 relative border-t border-[#303030]/60">

@@ -58,8 +58,20 @@ const COMMON_ICONS = [
   "Shield",
 ];
 
+const sortSkillsByOrder = (items: SkillData[]) => {
+  return [...items].sort((a, b) => {
+    if (a.category !== b.category) {
+      return a.category.localeCompare(b.category);
+    }
+    if (a.order !== b.order) {
+      return a.order - b.order;
+    }
+    return 0;
+  });
+};
+
 export function SkillManagerClient({ initialSkills }: SkillManagerClientProps) {
-  const [skills, setSkills] = useState<SkillData[]>(initialSkills);
+  const [skills, setSkills] = useState<SkillData[]>(() => sortSkillsByOrder(initialSkills));
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
 
   // Modal / Form state
@@ -72,24 +84,46 @@ export function SkillManagerClient({ initialSkills }: SkillManagerClientProps) {
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Auto-hide status message after 3.5s
+  React.useEffect(() => {
+    if (statusMessage) {
+      const timer = setTimeout(() => {
+        setStatusMessage(null);
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [statusMessage]);
+
   // Form Fields
   const [formName, setFormName] = useState("");
   const [formCategory, setFormCategory] = useState<string>(SKILL_CATEGORIES[0]);
   const [formIcon, setFormIcon] = useState("Code2");
   const [formProficiency, setFormProficiency] = useState("");
-  const [formOrder, setFormOrder] = useState(0);
+  const [formOrder, setFormOrder] = useState(1);
   const [formPublished, setFormPublished] = useState(true);
 
   const openAddModal = () => {
     setEditingSkill(null);
     setFormName("");
-    setFormCategory(SKILL_CATEGORIES[0]);
+    const defaultCat = activeCategory !== "ALL" ? activeCategory : SKILL_CATEGORIES[0];
+    setFormCategory(defaultCat);
     setFormIcon("Code2");
     setFormProficiency("");
-    setFormOrder(0);
+    const catSkills = skills.filter((s) => s.category === defaultCat);
+    const maxOrder = catSkills.length > 0 ? Math.max(...catSkills.map((s) => s.order || 0)) : 0;
+    setFormOrder(maxOrder + 1);
     setFormPublished(true);
     setStatusMessage(null);
     setIsModalOpen(true);
+  };
+
+  const handleCategoryChange = (cat: string) => {
+    setFormCategory(cat);
+    if (!editingSkill) {
+      const catSkills = skills.filter((s) => s.category === cat);
+      const maxOrder = catSkills.length > 0 ? Math.max(...catSkills.map((s) => s.order || 0)) : 0;
+      setFormOrder(maxOrder + 1);
+    }
   };
 
   const openEditModal = (skill: SkillData) => {
@@ -123,9 +157,12 @@ export function SkillManagerClient({ initialSkills }: SkillManagerClientProps) {
 
         if (res.success && res.data) {
           setSkills((prev) =>
-            prev.map((s) => (s.id === editingSkill.id ? (res.data as SkillData) : s))
+            sortSkillsByOrder(
+              prev.map((s) => (s.id === editingSkill.id ? (res.data as SkillData) : s))
+            )
           );
           setIsModalOpen(false);
+          setEditingSkill(null);
           setStatusMessage({ type: "success", text: "Skill updated successfully!" });
         } else {
           setStatusMessage({ type: "error", text: res.error || "Failed to update skill." });
@@ -142,8 +179,9 @@ export function SkillManagerClient({ initialSkills }: SkillManagerClientProps) {
         });
 
         if (res.success && res.data) {
-          setSkills((prev) => [res.data as SkillData, ...prev]);
+          setSkills((prev) => sortSkillsByOrder([...prev, res.data as SkillData]));
           setIsModalOpen(false);
+          setEditingSkill(null);
           setStatusMessage({ type: "success", text: "New skill created successfully!" });
         } else {
           setStatusMessage({ type: "error", text: res.error || "Failed to create skill." });
@@ -299,7 +337,9 @@ export function SkillManagerClient({ initialSkills }: SkillManagerClientProps) {
                     )}
                   </td>
                   <td className="py-3 px-4 font-mono text-[#A3A3A3]">
-                    {skill.order}
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md bg-[#111111] border border-[#303030] text-[#84CC16]">
+                      #{skill.order}
+                    </span>
                   </td>
                   <td className="py-3 px-4">
                     <button
@@ -394,6 +434,12 @@ export function SkillManagerClient({ initialSkills }: SkillManagerClientProps) {
               </button>
             </div>
 
+            {statusMessage && statusMessage.type === "error" && (
+              <div className="p-3 mb-3 rounded-xl text-xs bg-red-950/40 border border-red-800 text-red-300">
+                {statusMessage.text}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-mono font-semibold text-[#A3A3A3] mb-1 uppercase">
@@ -415,7 +461,7 @@ export function SkillManagerClient({ initialSkills }: SkillManagerClientProps) {
                 </label>
                 <select
                   value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl bg-[#111111] border border-[#303030] text-white text-xs focus:border-[#84CC16] focus:outline-none"
                 >
                   {SKILL_CATEGORIES.map((c) => (
@@ -446,14 +492,18 @@ export function SkillManagerClient({ initialSkills }: SkillManagerClientProps) {
 
                 <div>
                   <label className="block text-xs font-mono font-semibold text-[#A3A3A3] mb-1 uppercase">
-                    Display Order
+                    Display Order (1 = 1st, 2 = 2nd...)
                   </label>
                   <input
                     type="number"
+                    min={1}
                     value={formOrder}
                     onChange={(e) => setFormOrder(Number(e.target.value))}
                     className="w-full px-3.5 py-2 rounded-xl bg-[#111111] border border-[#303030] text-white text-xs focus:border-[#84CC16] focus:outline-none"
                   />
+                  <p className="text-[10px] text-[#737373] mt-1 font-mono">
+                    Lower number comes first within this category (1 = 1st, 2 = 2nd...)
+                  </p>
                 </div>
               </div>
 
